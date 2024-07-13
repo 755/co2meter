@@ -1,0 +1,89 @@
+esphome:
+  name: co2meter
+  platform: ESP8266
+  board: d1_mini
+  includes:
+    - my_custom_sensor.h
+
+
+
+wifi:
+  ssid: "Kiril"
+  password: !secret iot_wifi
+  use_address: 192.168.100.118
+  manual_ip:
+    static_ip: 192.168.100.118
+    gateway: 192.168.100.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "CO2 Fallback Hotspot"
+
+
+# Enable logging
+logger:
+  level: INFO
+#  baud_rate: 0
+
+
+# Enable Home Assistant API
+api:
+  password: !secret hass_api_password
+
+ota:
+  password: !secret hass_api_password
+
+uart:
+  - id: u_1
+    rx_pin: GPIO5
+    tx_pin: GPIO4
+    baud_rate: 9600
+  - id: u_2
+    rx_pin: GPIO14
+    baud_rate: 9600
+  - id: u_3
+    rx_pin: GPIO12
+    baud_rate: 9600
+
+web_server:
+  port: 80
+  auth:
+    username: admin
+    password: !secret web_server_password
+  local: true
+
+
+sensor:
+  - platform: senseair
+    co2:
+      name: "SenseAir CO2 Value"
+    update_interval: 60s
+    uart_id: u_1
+    
+  - platform: pmsx003
+    type: PMSX003
+    pm_1_0:
+      name: "PM <1.0µm"
+      filters:
+        - throttle: 30s
+    pm_2_5:
+      name: "PM <2.5µm"
+      filters:
+        - throttle: 30s
+    pm_10_0:
+      name: "PM <10.0µm"
+      filters:
+        - throttle: 30s
+    uart_id: u_2
+
+  - platform: custom
+    lambda: |-
+      auto my_sensor = new MyCustomSensor(id(u_3));
+      App.register_component(my_sensor);
+      return {my_sensor->formaldehyde_sensor};
+
+    sensors:
+    - name: "CH2O"
+      unit_of_measurement: ppm
+      accuracy_decimals: 2
+
+  
